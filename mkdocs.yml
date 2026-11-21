@@ -1,0 +1,31 @@
+site_name: Glenn's Networking Notes
+site_description: Networking, CCNA and Infrastructure Knowledge Base
+
+theme:
+  name: material
+  language: en
+
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: cyan
+
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+
+nav:
+  - Home: index.md
+  - Networking Fundamentals: fundamentals.md
+  - Switching: switching.md
