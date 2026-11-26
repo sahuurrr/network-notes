@@ -1,0 +1,33 @@
+
+name: Network Notes CI
+
+on:
+  push:
+    branches:
+      - staging
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build MkDocs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install MkDocs Material
+        run: pip install "mkdocs-material>=9,<10"
+
+      - name: Build documentation
+        run: mkdocs build --strict
