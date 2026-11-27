@@ -1,0 +1,128 @@
+
+name: Network Notes CI
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build MkDocs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install MkDocs Material
+        run: pip install "mkdocs-material>=9,<10"
+
+      - name: Build documentation
+        run: mkdocs build --strict
+
+  deploy-staging:
+    name: Deploy staging to VPS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging'
+    concurrency:
+      group: network-notes-staging
+      cancel-in-progress: false
+
+    steps:
+      - name: Prepare SSH
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          : "${VPS_SSH_PRIVATE_KEY:?Missing VPS_SSH_PRIVATE_KEY}"
+          : "${VPS_KNOWN_HOSTS:?Missing VPS_KNOWN_HOSTS}"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy staging
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          : "${VPS_HOST:?Missing VPS_HOST}"
+          : "${VPS_PORT:?Missing VPS_PORT}"
+          : "${VPS_USER:?Missing VPS_USER}"
+
+          ssh -T \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -p "$VPS_PORT" \
+            "$VPS_USER@$VPS_HOST" \
+            deploy-staging
+
+  deploy-production:
+    name: Deploy production to VPS
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://notes.glennk.my.id
+    concurrency:
+      group: network-notes-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Prepare SSH
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          : "${VPS_SSH_PRIVATE_KEY:?Missing VPS_SSH_PRIVATE_KEY}"
+          : "${VPS_KNOWN_HOSTS:?Missing VPS_KNOWN_HOSTS}"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy production
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          : "${VPS_HOST:?Missing VPS_HOST}"
+          : "${VPS_PORT:?Missing VPS_PORT}"
+          : "${VPS_USER:?Missing VPS_USER}"
+
+          ssh -T \
+            -i ~/.ssh/id_ed25519 \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            -p "$VPS_PORT" \
+            "$VPS_USER@$VPS_HOST" \
+            deploy-production
